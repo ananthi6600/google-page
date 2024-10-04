@@ -175,16 +175,16 @@ footer a:hover{
     text-decoration: underline;
 }
 
-/* New styles for improved responsiveness */
+
 @media (max-width: 768px) {
     .search-items {
-        width: 90%; /* Make search box full width on small screens */
+        width: 90%; 
     }
     .below-search-items {
-        width: 100%; /* Ensure buttons take full width */
+        width: 100%;
     }
     footer {
-        flex-direction: column; /* Stack footer links on smaller screens */
+        flex-direction: column;
         align-items: center;
     }
 }
