@@ -1,0 +1,1067 @@
+Certainly! Let's break down the code step-by-step, explaining each part in detail.
+
+### 1. Main Application Class
+
+```java
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class SearchScraperApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(SearchScraperApplication.class, args);
+    }
+}
+```
+
+- **Imports**: The first two lines import necessary classes from the Spring Boot framework.
+  - `SpringApplication`: This class helps to bootstrap and launch the Spring application.
+  - `SpringBootApplication`: This annotation indicates that this is a Spring Boot application.
+
+- **@SpringBootApplication**: This annotation combines three other annotations:
+  - `@Configuration`: Indicates that this class contains Spring configuration.
+  - `@EnableAutoConfiguration`: Tells Spring Boot to automatically configure your application based on the dependencies on the classpath.
+  - `@ComponentScan`: Enables component scanning, allowing Spring to find other components, configurations, and services.
+
+- **public class SearchScraperApplication**: Defines the main application class. The name can be anything, but here it’s `SearchScraperApplication`.
+
+- **public static void main(String[] args)**: This is the entry point of the Java application.
+  - `String[] args`: This parameter is an array of strings that can hold command-line arguments.
+
+- **SpringApplication.run(...)**: This line launches the application by creating an application context and starting the Spring framework.
+
+### 2. Service Class
+
+```java
+import org.openqa.selenium.By;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.chrome.ChromeDriver;
+import org.springframework.stereotype.Service;
+
+import java.util.ArrayList;
+import java.util.List;
+
+@Service
+public class SearchService {
+```
+
+- **Imports**: The lines here import classes from Selenium and Spring:
+  - `By`: A mechanism to locate elements on a web page (e.g., by ID, class name, etc.).
+  - `WebDriver`: An interface for controlling a web browser.
+  - `WebElement`: Represents an element on a web page (e.g., a button, text field, etc.).
+  - `ChromeDriver`: A class that implements the `WebDriver` interface to control Chrome.
+  - `Service`: An annotation indicating that this class is a Spring service component.
+
+- **public class SearchService**: Defines a service class named `SearchService`, which will contain the logic for searching and scraping links.
+
+### 3. Search Method
+
+```java
+    public List<String> searchAndScrapeLinks(String query) {
+        System.setProperty("webdriver.chrome.driver", "path/to/chromedriver");
+        WebDriver driver = new ChromeDriver();
+        List<String> links = new ArrayList<>();
+```
+
+- **public List<String> searchAndScrapeLinks(String query)**: A public method that takes a search query as input and returns a list of strings (links).
+
+- **System.setProperty(...)**: Sets the system property for the ChromeDriver's executable file path. You need to replace `"path/to/chromedriver"` with the actual path on your machine.
+
+- **WebDriver driver = new ChromeDriver()**: Creates a new instance of ChromeDriver, which opens a new Chrome browser window.
+
+- **List<String> links = new ArrayList<>()**: Initializes an empty list to store the links retrieved from the search results.
+
+### 4. Perform Search
+
+```java
+        try {
+            driver.get("https://www.google.com");
+            WebElement searchBox = driver.findElement(By.name("q"));
+            searchBox.sendKeys(query);
+            searchBox.submit();
+```
+
+- **try**: Begins a block that handles exceptions. If an exception occurs in this block, control moves to the `catch` block.
+
+- **driver.get("https://www.google.com")**: Navigates to Google's homepage.
+
+- **WebElement searchBox = driver.findElement(By.name("q"))**: Locates the search input box on the page. `By.name("q")` finds the input field by its `name` attribute, which is `q` for Google searches.
+
+- **searchBox.sendKeys(query)**: Sends the input query to the search box.
+
+- **searchBox.submit()**: Submits the form, initiating the search.
+
+### 5. Scrape Results
+
+```java
+            Thread.sleep(2000);
+            List<WebElement> results = driver.findElements(By.cssSelector("h3"));
+            for (WebElement result : results) {
+                links.add(result.getAttribute("innerHTML"));
+            }
+```
+
+- **Thread.sleep(2000)**: Pauses execution for 2 seconds to give the search results time to load. (This is a basic way to handle loading; better would be to use `WebDriverWait`.)
+
+- **List<WebElement> results = driver.findElements(By.cssSelector("h3"))**: Finds all elements matching the CSS selector `h3`. This targets the titles of search results, which are typically in `<h3>` tags.
+
+- **for (WebElement result : results)**: Iterates through each search result found.
+
+- **links.add(result.getAttribute("innerHTML"))**: Extracts the inner HTML (title) of each result and adds it to the `links` list.
+
+### 6. Exception Handling and Cleanup
+
+```java
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            driver.quit();
+        }
+
+        return links;
+    }
+}
+```
+
+- **catch (Exception e)**: Catches any exceptions that may occur in the `try` block. `e.printStackTrace()` prints the exception details to the console for debugging.
+
+- **finally**: This block always executes, regardless of whether an exception occurred.
+
+- **driver.quit()**: Closes the browser and cleans up resources.
+
+- **return links**: Returns the list of scraped links.
+
+### 7. Controller Class
+
+```java
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+
+@RestController
+public class SearchController {
+```
+
+- **Imports**: The controller imports necessary classes:
+  - `Autowired`: An annotation to inject dependencies.
+  - `GetMapping`: An annotation for handling HTTP GET requests.
+  - `RequestParam`: An annotation to bind query parameters to method parameters.
+  - `RestController`: Combines `@Controller` and `@ResponseBody`, indicating that the class is a web controller.
+
+- **public class SearchController**: Defines a REST controller named `SearchController`.
+
+### 8. Define Search Endpoint
+
+```java
+    @Autowired
+    private SearchService searchService;
+
+    @GetMapping("/search")
+    public List<String> search(@RequestParam String query) {
+        return searchService.searchAndScrapeLinks(query);
+    }
+}
+```
+
+- **@Autowired**: Injects the `SearchService` bean into this controller, allowing access to its methods.
+
+- **@GetMapping("/search")**: Maps HTTP GET requests to the `/search` URL to the `search` method.
+
+- **public List<String> search(@RequestParam String query)**: Defines the search method, which takes a `query` parameter from the request.
+
+- **return searchService.searchAndScrapeLinks(query)**: Calls the `searchAndScrapeLinks` method from the `SearchService` with the provided query and returns the list of links.
+
+### Conclusion
+
+This structure allows your Spring Boot application to respond to search queries by using Selenium to perform the search in a real browser and scrape the resulting links. Each class and method serves a specific purpose, adhering to principles of separation of concerns, which makes your code easier to manage and understand. 
+
+If you have any more specific questions about certain parts or need further clarification, feel free to ask!
+
+
+
+https://www.google.com/search?q=java
+
+
+
+
+
+
+
+
+You said:
+how to automatically open chrome and search whatever and get all the links from my search page using java springboot
+ChatGPT said:
+ChatGPT
+
+To automatically open Chrome, perform a search, and scrape the links from the search results using Java Spring Boot, you can leverage Selenium WebDriver. Here’s a basic approach to achieve this:
+Prerequisites
+
+    Java Development Kit (JDK): Make sure you have JDK installed.
+    Maven: If you’re using Maven, include the necessary dependencies in your pom.xml.
+    Selenium WebDriver: Add the Selenium WebDriver dependency.
+    ChromeDriver: Download ChromeDriver compatible with your Chrome version and ensure it's in your system's PATH.
+
+Maven Dependencies
+
+Add the following dependencies to your pom.xml:
+
+xml
+
+<dependencies>
+    <dependency>
+        <groupId>org.seleniumhq.selenium</groupId>
+        <artifactId>selenium-java</artifactId>
+        <version>4.20.0</version> <!-- Check for the latest version -->
+    </dependency>
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter</artifactId>
+    </dependency>
+</dependencies>
+
+Spring Boot Application
+
+Create a Spring Boot application that uses Selenium to perform the search and scrape the links.
+1. Main Application
+
+java
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class SearchScraperApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(SearchScraperApplication.class, args);
+    }
+}
+
+2. Service Class
+
+Create a service that handles the search and scraping logic:
+
+java
+
+import org.openqa.selenium.By;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.chrome.ChromeDriver;
+import org.springframework.stereotype.Service;
+
+import java.util.ArrayList;
+import java.util.List;
+
+@Service
+public class SearchService {
+
+    public List<String> searchAndScrapeLinks(String query) {
+        // Set up ChromeDriver path
+        System.setProperty("webdriver.chrome.driver", "path/to/chromedriver"); // Adjust the path
+
+        WebDriver driver = new ChromeDriver();
+        List<String> links = new ArrayList<>();
+
+        try {
+            // Open Google
+            driver.get("https://www.google.com");
+
+            // Find the search box and input the query
+            WebElement searchBox = driver.findElement(By.name("q"));
+            searchBox.sendKeys(query);
+            searchBox.submit();
+
+            // Wait for the results to load (you may need to implement better wait logic)
+            Thread.sleep(2000); // Simple wait, consider using WebDriverWait
+
+            // Scrape the links
+            List<WebElement> results = driver.findElements(By.cssSelector("h3"));
+            for (WebElement result : results) {
+                links.add(result.getAttribute("innerHTML"));
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            driver.quit();
+        }
+
+        return links;
+    }
+}
+
+3. Controller
+
+Create a controller to expose an endpoint for the search functionality:
+
+java
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+
+@RestController
+public class SearchController {
+
+    @Autowired
+    private SearchService searchService;
+
+    @GetMapping("/search")
+    public List<String> search(@RequestParam String query) {
+        return searchService.searchAndScrapeLinks(query);
+    }
+}
+
+Running the Application
+
+    Ensure you have the correct path to the ChromeDriver in your service.
+    Run your Spring Boot application.
+    Access the search endpoint via a browser or API client:
+
+bash
+
+GET http://localhost:8080/search?query=your_search_term
+
+Notes
+
+    WebDriverWait: Replace Thread.sleep with WebDriverWait for a more robust solution.
+    Error Handling: Improve error handling based on your needs.
+    Legal Considerations: Be aware of the legal implications of web scraping, especially against terms of service.
+    Headless Mode: For running in environments without a GUI, consider running Chrome in headless mode.
+
+Conclusion
+
+This setup provides a basic framework for automatically opening Chrome, searching for a term, and scraping the results using Java and Spring Boot. You can expand upon this by adding features like pagination, saving results to a database, or processing the scraped data further.
+You said:
+using java and javascript
+ChatGPT said:
+ChatGPT
+
+To achieve the task of automatically opening Chrome, performing a search, and scraping links from the search results using Java and JavaScript, you can use Selenium for Java and integrate JavaScript for any browser-specific interactions.
+
+Here’s how to set up the project using Java (with Selenium) and JavaScript (for the browser environment):
+Prerequisites
+
+    Java Development Kit (JDK): Ensure JDK is installed.
+    Maven: Use Maven for dependency management.
+    Selenium WebDriver: Add Selenium dependencies.
+    ChromeDriver: Download ChromeDriver matching your Chrome version and ensure it's in your system's PATH.
+
+Maven Dependencies
+
+In your pom.xml, include the following dependencies:
+
+xml
+
+<dependencies>
+    <dependency>
+        <groupId>org.seleniumhq.selenium</groupId>
+        <artifactId>selenium-java</artifactId>
+        <version>4.20.0</version> <!-- Check for the latest version -->
+    </dependency>
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter</artifactId>
+    </dependency>
+</dependencies>
+
+Spring Boot Application
+
+Create your Spring Boot application:
+1. Main Application Class
+
+java
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class SearchScraperApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(SearchScraperApplication.class, args);
+    }
+}
+
+2. Service Class
+
+Here’s a service that uses Selenium to perform the search:
+
+java
+
+import org.openqa.selenium.By;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.chrome.ChromeDriver;
+import org.springframework.stereotype.Service;
+
+import java.util.ArrayList;
+import java.util.List;
+
+@Service
+public class SearchService {
+
+    public List<String> searchAndScrapeLinks(String query) {
+        // Set up ChromeDriver path
+        System.setProperty("webdriver.chrome.driver", "path/to/chromedriver"); // Adjust this path
+
+        WebDriver driver = new ChromeDriver();
+        List<String> links = new ArrayList<>();
+
+        try {
+            // Open Google
+            driver.get("https://www.google.com");
+
+            // Find the search box and input the query
+            WebElement searchBox = driver.findElement(By.name("q"));
+            searchBox.sendKeys(query);
+            searchBox.submit();
+
+            // Wait for the results to load (better to use WebDriverWait)
+            Thread.sleep(2000);
+
+            // Scrape the links
+            List<WebElement> results = driver.findElements(By.cssSelector("h3"));
+            for (WebElement result : results) {
+                links.add(result.getAttribute("innerHTML"));
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            driver.quit();
+        }
+
+        return links;
+    }
+}
+
+JavaScript Integration
+
+If you need to run some JavaScript in the browser context (e.g., to manipulate or interact with the page), you can use Selenium's JavascriptExecutor.
+Example of JavaScript Execution
+
+You might want to execute JavaScript after the search to manipulate or extract more data:
+
+java
+
+import org.openqa.selenium.JavascriptExecutor;
+
+// Inside your searchAndScrapeLinks method after loading the results
+JavascriptExecutor jsExecutor = (JavascriptExecutor) driver;
+String pageTitle = (String) jsExecutor.executeScript("return document.title;");
+System.out.println("Page Title: " + pageTitle);
+
+3. Controller
+
+Expose a REST endpoint for the search functionality:
+
+java
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+
+@RestController
+public class SearchController {
+
+    @Autowired
+    private SearchService searchService;
+
+    @GetMapping("/search")
+    public List<String> search(@RequestParam String query) {
+        return searchService.searchAndScrapeLinks(query);
+    }
+}
+
+Running the Application
+
+    Ensure you have the correct path for ChromeDriver in your service.
+    Run your Spring Boot application.
+    Access the search endpoint via a browser or API client:
+
+bash
+
+GET http://localhost:8080/search?query=your_search_term
+
+Additional Considerations
+
+    Error Handling: Improve error handling as needed.
+    Dynamic Waits: Consider using WebDriverWait for better handling of loading times instead of Thread.sleep.
+    Headless Mode: To run Chrome in headless mode, add options to the ChromeDriver.
+    Legal Considerations: Always ensure compliance with the website’s terms of service regarding scraping.
+
+Conclusion
+
+This setup provides a simple framework for automating Google searches and scraping results using Java and JavaScript. You can expand upon this by adding features like data storage, logging, or more complex scraping techniques.
+You said:
+can you explain above line by line code, because there are many new term words areincluded, seperate classses, methods, properties, all usages of seperate lines, please send
+ChatGPT said:
+ChatGPT
+
+Certainly! Let's break down the code step-by-step, explaining each part in detail.
+1. Main Application Class
+
+java
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class SearchScraperApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(SearchScraperApplication.class, args);
+    }
+}
+
+    Imports: The first two lines import necessary classes from the Spring Boot framework.
+        SpringApplication: This class helps to bootstrap and launch the Spring application.
+        SpringBootApplication: This annotation indicates that this is a Spring Boot application.
+
+    @SpringBootApplication: This annotation combines three other annotations:
+        @Configuration: Indicates that this class contains Spring configuration.
+        @EnableAutoConfiguration: Tells Spring Boot to automatically configure your application based on the dependencies on the classpath.
+        @ComponentScan: Enables component scanning, allowing Spring to find other components, configurations, and services.
+
+    public class SearchScraperApplication: Defines the main application class. The name can be anything, but here it’s SearchScraperApplication.
+
+    public static void main(String[] args): This is the entry point of the Java application.
+        String[] args: This parameter is an array of strings that can hold command-line arguments.
+
+    SpringApplication.run(...): This line launches the application by creating an application context and starting the Spring framework.
+
+2. Service Class
+
+java
+
+import org.openqa.selenium.By;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.chrome.ChromeDriver;
+import org.springframework.stereotype.Service;
+
+import java.util.ArrayList;
+import java.util.List;
+
+@Service
+public class SearchService {
+
+    Imports: The lines here import classes from Selenium and Spring:
+        By: A mechanism to locate elements on a web page (e.g., by ID, class name, etc.).
+        WebDriver: An interface for controlling a web browser.
+        WebElement: Represents an element on a web page (e.g., a button, text field, etc.).
+        ChromeDriver: A class that implements the WebDriver interface to control Chrome.
+        Service: An annotation indicating that this class is a Spring service component.
+
+    public class SearchService: Defines a service class named SearchService, which will contain the logic for searching and scraping links.
+
+3. Search Method
+
+java
+
+    public List<String> searchAndScrapeLinks(String query) {
+        System.setProperty("webdriver.chrome.driver", "path/to/chromedriver");
+        WebDriver driver = new ChromeDriver();
+        List<String> links = new ArrayList<>();
+
+    public List<String> searchAndScrapeLinks(String query): A public method that takes a search query as input and returns a list of strings (links).
+
+    System.setProperty(...): Sets the system property for the ChromeDriver's executable file path. You need to replace "path/to/chromedriver" with the actual path on your machine.
+
+    WebDriver driver = new ChromeDriver(): Creates a new instance of ChromeDriver, which opens a new Chrome browser window.
+
+    List<String> links = new ArrayList<>(): Initializes an empty list to store the links retrieved from the search results.
+
+4. Perform Search
+
+java
+
+        try {
+            driver.get("https://www.google.com");
+            WebElement searchBox = driver.findElement(By.name("q"));
+            searchBox.sendKeys(query);
+            searchBox.submit();
+
+    try: Begins a block that handles exceptions. If an exception occurs in this block, control moves to the catch block.
+
+    driver.get("https://www.google.com"): Navigates to Google's homepage.
+
+    WebElement searchBox = driver.findElement(By.name("q")): Locates the search input box on the page. By.name("q") finds the input field by its name attribute, which is q for Google searches.
+
+    searchBox.sendKeys(query): Sends the input query to the search box.
+
+    searchBox.submit(): Submits the form, initiating the search.
+
+5. Scrape Results
+
+java
+
+            Thread.sleep(2000);
+            List<WebElement> results = driver.findElements(By.cssSelector("h3"));
+            for (WebElement result : results) {
+                links.add(result.getAttribute("innerHTML"));
+            }
+
+    Thread.sleep(2000): Pauses execution for 2 seconds to give the search results time to load. (This is a basic way to handle loading; better would be to use WebDriverWait.)
+
+    List<WebElement> results = driver.findElements(By.cssSelector("h3")): Finds all elements matching the CSS selector h3. This targets the titles of search results, which are typically in <h3> tags.
+
+    for (WebElement result : results): Iterates through each search result found.
+
+    links.add(result.getAttribute("innerHTML")): Extracts the inner HTML (title) of each result and adds it to the links list.
+
+6. Exception Handling and Cleanup
+
+java
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            driver.quit();
+        }
+
+        return links;
+    }
+}
+
+    catch (Exception e): Catches any exceptions that may occur in the try block. e.printStackTrace() prints the exception details to the console for debugging.
+
+    finally: This block always executes, regardless of whether an exception occurred.
+
+    driver.quit(): Closes the browser and cleans up resources.
+
+    return links: Returns the list of scraped links.
+
+7. Controller Class
+
+java
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+
+@RestController
+public class SearchController {
+
+    Imports: The controller imports necessary classes:
+        Autowired: An annotation to inject dependencies.
+        GetMapping: An annotation for handling HTTP GET requests.
+        RequestParam: An annotation to bind query parameters to method parameters.
+        RestController: Combines @Controller and @ResponseBody, indicating that the class is a web controller.
+
+    public class SearchController: Defines a REST controller named SearchController.
+
+8. Define Search Endpoint
+
+java
+
+    @Autowired
+    private SearchService searchService;
+
+    @GetMapping("/search")
+    public List<String> search(@RequestParam String query) {
+        return searchService.searchAndScrapeLinks(query);
+    }
+}
+
+    @Autowired: Injects the SearchService bean into this controller, allowing access to its methods.
+
+    @GetMapping("/search"): Maps HTTP GET requests to the /search URL to the search method.
+
+    public List<String> search(@RequestParam String query): Defines the search method, which takes a query parameter from the request.
+
+    return searchService.searchAndScrapeLinks(query): Calls the searchAndScrapeLinks method from the SearchService with the provided query and returns the list of links.
+
+Conclusion
+
+This structure allows your Spring Boot application to respond to search queries by using Selenium to perform the search in a real browser and scrape the resulting links. Each class and method serves a specific purpose, adhering to principles of separation of concerns, which makes your code easier to manage and understand.
+
+If you have any more specific questions about certain parts or need further clarification, feel free to ask!
+You said:
+https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css|
+
+how to add this cdn link to html
+ChatGPT said:
+ChatGPT
+
+To add the Font Awesome CDN link to your HTML, you can include it in the <head> section of your HTML document. Here’s a simple example:
+Basic HTML Structure
+
+html
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Page Title</title>
+    <!-- Font Awesome CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+</head>
+<body>
+
+    <h1>Welcome to My Page</h1>
+    <i class="fas fa-camera"></i> <!-- Example Font Awesome icon -->
+
+</body>
+</html>
+
+Explanation
+
+    <link rel="stylesheet" href="...">: This tag links to an external stylesheet. The rel attribute specifies the relationship of the linked document to the current document (in this case, a stylesheet).
+
+    href: This attribute contains the URL to the Font Awesome CSS file.
+
+Using Font Awesome Icons
+
+Once you’ve added the CDN link, you can use Font Awesome icons anywhere in your HTML by adding the appropriate classes. For example:
+
+html
+
+<i class="fas fa-camera"></i>
+
+    <i class="fas fa-camera"></i>: This line creates an icon of a camera. The class fas indicates it's a solid icon, and fa-camera specifies the camera icon.
+
+Full Example
+
+Here’s how your complete HTML file might look:
+
+html
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Page Title</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+</head>
+<body>
+
+    <h1>Welcome to My Page</h1>
+    <p>Here is an example of a Font Awesome icon:</p>
+    <i class="fas fa-camera"></i>
+
+</body>
+</html>
+
+Additional Notes
+
+    Make sure you have internet access when you load your page, as the icon styles are being pulled from an external server.
+    You can explore more icons and their respective classes on the Font Awesome website.
+
+You said:
+how to align a image in center
+ChatGPT said:
+ChatGPT
+
+To center an image in HTML, you can use various methods depending on your layout requirements. Here are some common approaches using CSS:
+1. Using text-align (for inline elements)
+
+This method is effective when the image is wrapped in a block-level container (like a <div> or <p>).
+
+html
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Center Image</title>
+    <style>
+        .center {
+            text-align: center; /* Centers the content */
+        }
+    </style>
+</head>
+<body>
+
+    <div class="center">
+        <img src="your-image.jpg" alt="Description" />
+    </div>
+
+</body>
+</html>
+
+2. Using margin: auto (for block-level elements)
+
+This method requires setting the image to display: block and using automatic margins.
+
+html
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Center Image</title>
+    <style>
+        img {
+            display: block;       /* Makes the image a block element */
+            margin: 0 auto;      /* Centers the image horizontally */
+        }
+    </style>
+</head>
+<body>
+
+    <img src="your-image.jpg" alt="Description" />
+
+</body>
+</html>
+
+3. Using Flexbox
+
+Flexbox is a powerful layout model that makes centering elements easy.
+
+html
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Center Image</title>
+    <style>
+        .container {
+            display: flex;               /* Enables flexbox */
+            justify-content: center;     /* Centers horizontally */
+            align-items: center;         /* Centers vertically */
+            height: 100vh;              /* Full viewport height */
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <img src="your-image.jpg" alt="Description" />
+    </div>
+
+</body>
+</html>
+
+4. Using Grid
+
+CSS Grid is another layout system that allows for easy centering.
+
+html
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Center Image</title>
+    <style>
+        .container {
+            display: grid;             /* Enables grid layout */
+            place-items: center;       /* Centers both horizontally and vertically */
+            height: 100vh;            /* Full viewport height */
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <img src="your-image.jpg" alt="Description" />
+    </div>
+
+</body>
+</html>
+
+Choosing a Method
+
+    Text Align: Good for inline images within block containers.
+    Margin Auto: Best for centering block images when you have a fixed width or the image is naturally wide.
+    Flexbox/Grid: Ideal for centering elements both horizontally and vertically in more complex layouts.
+
+Feel free to choose the method that best fits your needs! If you have specific requirements or a particular layout in mind, let me know!
+You said:
+<?xml version="1.0" ?><svg id="Capa_1" style="enable-background:new 0 0 150 150;" version="1.1" viewBox="0 0 150 150" xml:space="preserve" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><style type="text/css">
+	.st0{fill:#1A73E8;}
+	.st1{fill:#EA4335;}
+	.st2{fill:#4285F4;}
+	.st3{fill:#FBBC04;}
+	.st4{fill:#34A853;}
+	.st5{fill:#4CAF50;}
+	.st6{fill:#1E88E5;}
+	.st7{fill:#E53935;}
+	.st8{fill:#C62828;}
+	.st9{fill:#FBC02D;}
+	.st10{fill:#1565C0;}
+	.st11{fill:#2E7D32;}
+	.st12{fill:#F6B704;}
+	.st13{fill:#E54335;}
+	.st14{fill:#4280EF;}
+	.st15{fill:#34A353;}
+	.st16{clip-path:url(#SVGID_2_);}
+	.st17{fill:#188038;}
+	.st18{opacity:0.2;fill:#FFFFFF;enable-background:new    ;}
+	.st19{opacity:0.3;fill:#0D652D;enable-background:new    ;}
+	.st20{clip-path:url(#SVGID_4_);}
+	.st21{opacity:0.3;fill:url(#_45_shadow_1_);enable-background:new    ;}
+	.st22{clip-path:url(#SVGID_6_);}
+	.st23{fill:#FA7B17;}
+	.st24{opacity:0.3;fill:#174EA6;enable-background:new    ;}
+	.st25{opacity:0.3;fill:#A50E0E;enable-background:new    ;}
+	.st26{opacity:0.3;fill:#E37400;enable-background:new    ;}
+	.st27{fill:url(#Finish_mask_1_);}
+	.st28{fill:#FFFFFF;}
+	.st29{fill:#0C9D58;}
+	.st30{opacity:0.2;fill:#004D40;enable-background:new    ;}
+	.st31{opacity:0.2;fill:#3E2723;enable-background:new    ;}
+	.st32{fill:#FFC107;}
+	.st33{opacity:0.2;fill:#1A237E;enable-background:new    ;}
+	.st34{opacity:0.2;}
+	.st35{fill:#1A237E;}
+	.st36{fill:url(#SVGID_7_);}
+	.st37{fill:#FBBC05;}
+	.st38{clip-path:url(#SVGID_9_);fill:#E53935;}
+	.st39{clip-path:url(#SVGID_11_);fill:#FBC02D;}
+	.st40{clip-path:url(#SVGID_13_);fill:#E53935;}
+	.st41{clip-path:url(#SVGID_15_);fill:#FBC02D;}
+</style><g><g id="g17480" transform="translate(646.3034,236.3789)"><path class="st6" d="M-571.3-147.3c7.9,0,14.2-6.4,14.2-14.2l0-33.2c0-7.9-6.4-14.2-14.2-14.2    c-7.9,0-14.2,6.4-14.2,14.2v33.2C-585.5-153.7-579.1-147.3-571.3-147.3" id="path17482"/></g><g id="g17484" transform="translate(645.4803,233.1492)"><path class="st5" d="M-575.2-125.5L-575.2-125.5v14.9h9.5v-14.8c-1.5,0.2-3.1,0.2-4.7,0.2    C-572.1-125.1-573.6-125.2-575.2-125.5" id="path17486"/></g><g id="g17488" transform="translate(643.3809,235.9115)"><path class="st9" d="M-585.2-144.1c-4.2-4.3-6.9-9.5-6.9-16.6h-9.5c0,9.5,3.7,17.3,9.7,23.3l0.1-0.1    c0,0,0,0-0.1-0.1L-585.2-144.1z" id="path17490"/></g><g id="g17492" transform="translate(650.4081,238.79)"><path class="st7" d="M-551.7-163.6c0,11.9-10.5,23.6-23.7,23.6c-6.6,0-12.5-2.7-16.8-7l-0.1,0.1l-6.6,6.6    c0,0,0,0,0.1,0.1c4.9,4.9,11.4,8.2,18.7,9.3c1.6,0.2,3.2,0.4,4.8,0.4c1.6,0,3.2,0,4.7-0.2c16.1-2.3,28.4-16.1,28.4-32.7H-551.7z" id="path17494"/></g></g></svg>
+
+how to add this google microphone icon link to html
+ChatGPT said:
+ChatGPT
+
+To add the SVG Google microphone icon to your HTML, you can simply include the SVG markup directly in your HTML file. Here’s how you can do it:
+Directly Embedding SVG
+
+You can copy the entire SVG code and place it within your HTML file wherever you want the microphone icon to appear.
+
+html
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Microphone Icon</title>
+    <style>
+        /* Optional: Style the icon */
+        .microphone-icon {
+            width: 50px; /* Adjust the size as needed */
+            height: 50px; /* Adjust the size as needed */
+            fill: #1A73E8; /* Change color if needed */
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Google Microphone Icon</h1>
+    <!-- Embed the SVG here -->
+    <svg class="microphone-icon" id="Capa_1" style="enable-background:new 0 0 150 150;" version="1.1" viewBox="0 0 150 150" xml:space="preserve" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+        <style type="text/css">
+            .st0{fill:#1A73E8;}
+            .st1{fill:#EA4335;}
+            .st2{fill:#4285F4;}
+            .st3{fill:#FBBC04;}
+            .st4{fill:#34A853;}
+            .st5{fill:#4CAF50;}
+            .st6{fill:#1E88E5;}
+            .st7{fill:#E53935;}
+            .st8{fill:#C62828;}
+            .st9{fill:#FBC02D;}
+            .st10{fill:#1565C0;}
+            .st11{fill:#2E7D32;}
+            .st12{fill:#F6B704;}
+            .st13{fill:#E54335;}
+            .st14{fill:#4280EF;}
+            .st15{fill:#34A353;}
+            .st16{clip-path:url(#SVGID_2_);}
+            .st17{fill:#188038;}
+            .st18{opacity:0.2;fill:#FFFFFF;enable-background:new;}
+            .st19{opacity:0.3;fill:#0D652D;enable-background:new;}
+            .st20{clip-path:url(#SVGID_4_);}
+            .st21{opacity:0.3;fill:url(#_45_shadow_1_);enable-background:new;}
+            .st22{clip-path:url(#SVGID_6_);}
+            .st23{fill:#FA7B17;}
+            .st24{opacity:0.3;fill:#174EA6;enable-background:new;}
+            .st25{opacity:0.3;fill:#A50E0E;enable-background:new;}
+            .st26{opacity:0.3;fill:#E37400;enable-background:new;}
+            .st27{fill:url(#Finish_mask_1_);}
+            .st28{fill:#FFFFFF;}
+            .st29{fill:#0C9D58;}
+            .st30{opacity:0.2;fill:#004D40;enable-background:new;}
+            .st31{opacity:0.2;fill:#3E2723;enable-background:new;}
+            .st32{fill:#FFC107;}
+            .st33{opacity:0.2;fill:#1A237E;enable-background:new;}
+            .st34{opacity:0.2;}
+            .st35{fill:#1A237E;}
+            .st36{fill:url(#SVGID_7_);}
+            .st37{fill:#FBBC05;}
+            .st38{clip-path:url(#SVGID_9_);fill:#E53935;}
+            .st39{clip-path:url(#SVGID_11_);fill:#FBC02D;}
+            .st40{clip-path:url(#SVGID_13_);fill:#E53935;}
+            .st41{clip-path:url(#SVGID_15_);fill:#FBC02D;}
+        </style>
+        <g>
+            <g id="g17480" transform="translate(646.3034,236.3789)">
+                <path class="st6" d="M-571.3-147.3c7.9,0,14.2-6.4,14.2-14.2l0-33.2c0-7.9-6.4-14.2-14.2-14.2c-7.9,0-14.2,6.4-14.2,14.2v33.2C-585.5-153.7-579.1-147.3-571.3-147.3" id="path17482"/>
+            </g>
+            <g id="g17484" transform="translate(645.4803,233.1492)">
+                <path class="st5" d="M-575.2-125.5L-575.2-125.5v14.9h9.5v-14.8c-1.5,0.2-3.1,0.2-4.7,0.2C-572.1-125.1-573.6-125.2-575.2-125.5" id="path17486"/>
+            </g>
+            <g id="g17488" transform="translate(643.3809,235.9115)">
+                <path class="st9" d="M-585.2-144.1c-4.2-4.3-6.9-9.5-6.9-16.6h-9.5c0,9.5,3.7,17.3,9.7,23.3l0.1-0.1c0,0,0,0-0.1-0.1L-585.2-144.1z" id="path17490"/>
+            </g>
+            <g id="g17492" transform="translate(650.4081,238.79)">
+                <path class="st7" d="M-551.7-163.6c0,11.9-10.5,23.6-23.7,23.6c-6.6,0-12.5-2.7-16.8-7l-0.1,0.1l-6.6,6.6c0,0,0,0,0.1,0.1c4.9,4.9,11.4,8.2,18.7,9.3c1.6,0.2,3.2,0.4,4.8,0.4c1.6,0,3.2,0,4.7-0.2c16.1-2.3,28.4-16.1,28.4-32.7H-551.7z" id="path17494"/>
+            </g>
+        </g>
+    </svg>
+
+</body>
+</html>
+
+Explanation
+
+    Embedding the SVG: The SVG code is placed directly within the HTML body, allowing it to render as part of the document.
+
+    Styling: The optional CSS in the <style> section sets the size and color of the icon. You can adjust the width, height, and fill properties as needed.
+
+Advantages of Using SVG
+
+    Scalability: SVGs are vector graphics, so they scale without losing quality.
+    Customizability: You can easily change colors, sizes, and other styles using CSS.
+    Accessibility: You can provide alternative text using the title or desc tags within the SVG for better accessibility.
+
+Feel free to customize the code and styles as needed! If you have any questions or need further assistance, let me know!
+You said:
+data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiA/PjxzdmcgaWQ9IkNhcGFfMSIgc3R5bGU9ImVuYWJsZS1iYWNrZ3JvdW5kOm5ldyAwIDAgMTUwIDE1MDsiIHZlcnNpb249IjEuMSIgdmlld0JveD0iMCAwIDE1MCAxNTAiIHhtbDpzcGFjZT0icHJlc2VydmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiPjxzdHlsZSB0eXBlPSJ0ZXh0L2NzcyI+Cgkuc3Qwe2ZpbGw6IzFBNzNFODt9Cgkuc3Qxe2ZpbGw6I0VBNDMzNTt9Cgkuc3Qye2ZpbGw6IzQyODVGNDt9Cgkuc3Qze2ZpbGw6I0ZCQkMwNDt9Cgkuc3Q0e2ZpbGw6IzM0QTg1Mzt9Cgkuc3Q1e2ZpbGw6IzRDQUY1MDt9Cgkuc3Q2e2ZpbGw6IzFFODhFNTt9Cgkuc3Q3e2ZpbGw6I0U1MzkzNTt9Cgkuc3Q4e2ZpbGw6I0M2MjgyODt9Cgkuc3Q5e2ZpbGw6I0ZCQzAyRDt9Cgkuc3QxMHtmaWxsOiMxNTY1QzA7fQoJLnN0MTF7ZmlsbDojMkU3RDMyO30KCS5zdDEye2ZpbGw6I0Y2QjcwNDt9Cgkuc3QxM3tmaWxsOiNFNTQzMzU7fQoJLnN0MTR7ZmlsbDojNDI4MEVGO30KCS5zdDE1e2ZpbGw6IzM0QTM1Mzt9Cgkuc3QxNntjbGlwLXBhdGg6dXJsKCNTVkdJRF8yXyk7fQoJLnN0MTd7ZmlsbDojMTg4MDM4O30KCS5zdDE4e29wYWNpdHk6MC4yO2ZpbGw6I0ZGRkZGRjtlbmFibGUtYmFja2dyb3VuZDpuZXcgICAgO30KCS5zdDE5e29wYWNpdHk6MC4zO2ZpbGw6IzBENjUyRDtlbmFibGUtYmFja2dyb3VuZDpuZXcgICAgO30KCS5zdDIwe2NsaXAtcGF0aDp1cmwoI1NWR0lEXzRfKTt9Cgkuc3QyMXtvcGFjaXR5OjAuMztmaWxsOnVybCgjXzQ1X3NoYWRvd18xXyk7ZW5hYmxlLWJhY2tncm91bmQ6bmV3ICAgIDt9Cgkuc3QyMntjbGlwLXBhdGg6dXJsKCNTVkdJRF82Xyk7fQoJLnN0MjN7ZmlsbDojRkE3QjE3O30KCS5zdDI0e29wYWNpdHk6MC4zO2ZpbGw6IzE3NEVBNjtlbmFibGUtYmFja2dyb3VuZDpuZXcgICAgO30KCS5zdDI1e29wYWNpdHk6MC4zO2ZpbGw6I0E1MEUwRTtlbmFibGUtYmFja2dyb3VuZDpuZXcgICAgO30KCS5zdDI2e29wYWNpdHk6MC4zO2ZpbGw6I0UzNzQwMDtlbmFibGUtYmFja2dyb3VuZDpuZXcgICAgO30KCS5zdDI3e2ZpbGw6dXJsKCNGaW5pc2hfbWFza18xXyk7fQoJLnN0Mjh7ZmlsbDojRkZGRkZGO30KCS5zdDI5e2ZpbGw6IzBDOUQ1ODt9Cgkuc3QzMHtvcGFjaXR5OjAuMjtmaWxsOiMwMDRENDA7ZW5hYmxlLWJhY2tncm91bmQ6bmV3ICAgIDt9Cgkuc3QzMXtvcGFjaXR5OjAuMjtmaWxsOiMzRTI3MjM7ZW5hYmxlLWJhY2tncm91bmQ6bmV3ICAgIDt9Cgkuc3QzMntmaWxsOiNGRkMxMDc7fQoJLnN0MzN7b3BhY2l0eTowLjI7ZmlsbDojMUEyMzdFO2VuYWJsZS1iYWNrZ3JvdW5kOm5ldyAgICA7fQoJLnN0MzR7b3BhY2l0eTowLjI7fQoJLnN0MzV7ZmlsbDojMUEyMzdFO30KCS5zdDM2e2ZpbGw6dXJsKCNTVkdJRF83Xyk7fQoJLnN0Mzd7ZmlsbDojRkJCQzA1O30KCS5zdDM4e2NsaXAtcGF0aDp1cmwoI1NWR0lEXzlfKTtmaWxsOiNFNTM5MzU7fQoJLnN0Mzl7Y2xpcC1wYXRoOnVybCgjU1ZHSURfMTFfKTtmaWxsOiNGQkMwMkQ7fQoJLnN0NDB7Y2xpcC1wYXRoOnVybCgjU1ZHSURfMTNfKTtmaWxsOiNFNTM5MzU7fQoJLnN0NDF7Y2xpcC1wYXRoOnVybCgjU1ZHSURfMTVfKTtmaWxsOiNGQkMwMkQ7fQo8L3N0eWxlPjxnPjxnIGlkPSJnMTc0ODAiIHRyYW5zZm9ybT0idHJhbnNsYXRlKDY0Ni4zMDM0LDIzNi4zNzg5KSI+PHBhdGggY2xhc3M9InN0NiIgZD0iTS01NzEuMy0xNDcuM2M3LjksMCwxNC4yLTYuNCwxNC4yLTE0LjJsMC0zMy4yYzAtNy45LTYuNC0xNC4yLTE0LjItMTQuMiAgICBjLTcuOSwwLTE0LjIsNi40LTE0LjIsMTQuMnYzMy4yQy01ODUuNS0xNTMuNy01NzkuMS0xNDcuMy01NzEuMy0xNDcuMyIgaWQ9InBhdGgxNzQ4MiIvPjwvZz48ZyBpZD0iZzE3NDg0IiB0cmFuc2Zvcm09InRyYW5zbGF0ZSg2NDUuNDgwMywyMzMuMTQ5MikiPjxwYXRoIGNsYXNzPSJzdDUiIGQ9Ik0tNTc1LjItMTI1LjVMLTU3NS4yLTEyNS41djE0LjloOS41di0xNC44Yy0xLjUsMC4yLTMuMSwwLjItNC43LDAuMiAgICBDLTU3Mi4xLTEyNS4xLTU3My42LTEyNS4yLTU3NS4yLTEyNS41IiBpZD0icGF0aDE3NDg2Ii8+PC9nPjxnIGlkPSJnMTc0ODgiIHRyYW5zZm9ybT0idHJhbnNsYXRlKDY0My4zODA5LDIzNS45MTE1KSI+PHBhdGggY2xhc3M9InN0OSIgZD0iTS01ODUuMi0xNDQuMWMtNC4yLTQuMy02LjktOS41LTYuOS0xNi42aC05LjVjMCw5LjUsMy43LDE3LjMsOS43LDIzLjNsMC4xLTAuMSAgICBjMCwwLDAsMC0wLjEtMC4xTC01ODUuMi0xNDQuMXoiIGlkPSJwYXRoMTc0OTAiLz48L2c+PGcgaWQ9ImcxNzQ5MiIgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoNjUwLjQwODEsMjM4Ljc5KSI+PHBhdGggY2xhc3M9InN0NyIgZD0iTS01NTEuNy0xNjMuNmMwLDExLjktMTAuNSwyMy42LTIzLjcsMjMuNmMtNi42LDAtMTIuNS0yLjctMTYuOC03bC0wLjEsMC4xbC02LjYsNi42ICAgIGMwLDAsMCwwLDAuMSwwLjFjNC45LDQuOSwxMS40LDguMiwxOC43LDkuM2MxLjYsMC4yLDMuMiwwLjQsNC44LDAuNGMxLjYsMCwzLjIsMCw0LjctMC4yYzE2LjEtMi4zLDI4LjQtMTYuMSwyOC40LTMyLjdILTU1MS43eiIgaWQ9InBhdGgxNzQ5NCIvPjwvZz48L2c+PC9zdmc+
+
+how to add above to html
+ChatGPT said:
+ChatGPT
+
+To add a Base64-encoded SVG image to your HTML, you can use the <img> tag or set it as a background image in CSS. Here’s how to do it using both methods.
+Method 1: Using the <img> Tag
+
+You can directly use the Base64 string in an <img> tag like this:
+
+html
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Base64 SVG Example</title>
+</head>
+<body>
+
+    <h1>Base64 SVG Image</h1>
+    <img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiA/PjxzdmcgaWQ9IkNhcGFfMSIgc3R5bGU9ImVuYWJsZS1iYWNrZ3JvdW5kOm5ldyAwIDAgMTUwIDE1MDsiIHZlcnNpb249IjEuMSIgdmlld0JveD0iMCAwIDE1MCAxNTAiIHhtbDpzcGFjZT0icHJlc2VydmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiPjxzdHlsZSB0eXBlPSJ0ZXh0L2NzcyI+Cgkuc3Qwe2ZpbGw6IzFBNzNFODt9Cgkuc3Qxe2ZpbGw6I0VBNDMzNTt9Cgkuc3Qye2ZpbGw6IzQyODVGNDt9Cgkuc3Qze2ZpbGw6I0ZCQkMwNDt9Cgkuc3Q0e2ZpbGw6IzM0QTg1Mzt9Cgkuc3Q1e2ZpbGw6IzRDQUY1MDt9Cgkuc3Q2e2ZpbGw6IzFFODhFNTt9Cgkuc3Q3e2ZpbGw6I0U1MzkzNTt9Cgkuc3Q4e2ZpbGw6I0M2MjgyODt9Cgkuc3Q5e2ZpbGw6I0ZCQzAyRDt9Cgkuc3QxMHtmaWxsOiMxNTY1QzA7fQoJLnN0MTF7ZmlsbDojMkU3RDMyO30KCS5zdDEye2ZpbGw6I0Y2QjcwNDt9Cgkuc3QxM3tmaWxsOiNFNTQzMzU7fQoJLnN0MTR7ZmlsbDojNDI4MEVGO30KCS5zdDE1e2ZpbGw6IzM0QTM1Mzt9Cgkuc3QxNntjbGlwLXBhdGg6dXJsKCNTVkdJRF8yXyk7fQoJLnN0MTd7ZmlsbDojMTg4MDM4O30KCS5zdDE4e29wYWNpdHk6MC4yO2ZpbGw6I0ZGRkZGRjtlbmFibGUtYmFja2dyb3VuZDpuZXcgICAgO30KCS5zdDE5e29wYWNpdHk6MC4zO2ZpbGw6IzBENjUyRDtlbmFibGUtYmFja2dyb3VuZDpuZXcgICAgO30KCS5zdDIwe2NsaXAtcGF0aDp1cmwoI1NWR0lEXzRfKTt9Cgkuc3QyMXtvcGFjaXR5OjAuMztmaWxsOnVybCgjXzQ1X3NoYWRvd18xXyk7ZW5hYmxlLWJhY2tncm91bmQ6bmV3ICAgIDt9Cgkuc3QyMntjbGlwLXBhdGg6dXJsKCNTVkdJRF82Xyk7fQoJLnN0MjN7ZmlsbDojRkE3QjE3O30KCS5zdDI0e29wYWNpdHk6MC4zO2ZpbGw6IzE3NEVBNjtlbmFibGUtYmFja2dyb3VuZDpuZXcgICAgO30KCS5zdDI1e29wYWNpdHk6MC4zO2ZpbGw6I0E1MEUwRTtlbmFibGUtYmFja2dyb3VuZDpuZXcgICAgO30KCS5zdDI2e29wYWNpdHk6MC4zO2ZpbGw6I0UzNzQwMDtlbmFibGUtYmFja2dyb3VuZDpuZXcgICAgO30KCS5zdDI3e2ZpbGw6dXJsKCNGaW5pc2hfbWFza18xXyk7fQoJLnN0Mjh7ZmlsbDojRkZGRkZGO30KCS5zdDI5e2ZpbGw6IzBDOUQ1ODt9Cgkuc3QzMHtvcGFjaXR5OjAuMjtmaWxsOiMwMDRENDA7ZW5hYmxlLWJhY2tncm91bmQ6bmV3ICAgIDt9Cgkuc3QzMXtvcGFjaXR5OjAuMjtmaWxsOiMzRTI3MjM7ZW5hYmxlLWJhY2tncm91bmQ6bmV3ICAgIDt9Cgkuc3QzMntmaWxsOiNGRkMxMDc7fQoJLnN0MzN7b3BhY2l0eTowLjI7ZmlsbDojMUEyMzdFO2VuYWJsZS1iYWNrZ3JvdW5kOm5ldyAgICA7fQoJLnN0MzR7b3BhY2l0eTowLjI7fQoJLnN0MzV7ZmlsbDojMUEyMzdFO30KCS5zdDM2e2ZpbGw6dXJsKCNTVkdJRF83Xyk7fQoJLnN0Mzd7ZmlsbDojRkJCQzA1O30KCS5zdDM4e2NsaXAtcGF0aDp1cmwoI1NWR0lEXzlfKTtmaWxsOiNFNTM5MzU7fQoJLnN0Mzl7Y2xpcC1wYXRoOnVybCgjU1ZHSURfMTFfKTtmaWxsOiNGQkMwMkQ7fQoJLnN0NDB7Y2xpcC1wYXRoOnVybCgjU1ZHSURfMTNfKTtmaWxsOiNFNTM5MzU7fQoJLnN0NDF7Y2xpcC1wYXRoOnVybCgjU1ZHSURfMTVfKTtmaWxsOiNGQkMwMkQ7fQo8L3N0eWxlPjxnPjxnIGlkPSJnMTc0ODAiIHRyYW5zZm9ybT0idHJhbnNsYXRlKDY0Ni4zMDM0LDIzNi4zNzg5KSI+PHBhdGggY2xhc3M9InN0NiIgZD0iTS01NzEuMy0xNDcuM2M3LjksMCwxNC4yLTYuNCwxNC4yLTE0LjJsMC0zMy4yYzAtNy45LTYuNC0xNC4yLTE0LjItMTQuMiAgICBjLTcuOSwwLTE0LjIsNi40LTE0LjIsMTQuMnYzMy4yQy01ODUuNS0xNTMuNy01NzkuMS0xNDcuMy01NzEuMy0xNDcuMyIgaWQ9InBhdGgxNzQ4MiIvPjwvZz48ZyBpZD0iZzE3NDg0IiB0cmFuc2Zvcm09InRyYW5zbGF0ZSg2NDUuNDgwMywyMzMuMTQ5MikiPjxwYXRoIGNsYXNzPSJzdDUiIGQ9Ik0tNTc1LjItMTI1LjVMLTU3NS4yLTEyNS41djE0LjloOS41di0xNC44Yy0xLjUsMC4yLTMuMSwwLjItNC43LDAuMiAgICBDLTU3Mi4xLTEyNS4xLTU3My42LTEyNS4yLTU3NS4yLTEyNS41IiBpZD0icGF0aDE3NDg2Ii8
+
+
+ChatGPT can make mistakes. Check important info.
