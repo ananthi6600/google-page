@@ -98,6 +98,9 @@ span{
     padding: .6em;
     color: gray;
 }
+input{
+  text-decoration: none;
+}
 
 .images{
     display: flex;
